@@ -115,23 +115,32 @@ function M.speedTestCurl(params)
 	local post = cURL.form()
   	:add_file  ("name", "temp.txt", "text/plain")
 
+	local response = -1
+	local connect = -1
+	local total = -1
 	local c = cURL.easy()
 		:setopt_url("http://speedtest.litnet.lt/speedtest/upload.php")
 		:setopt_httppost(post)
-		:perform()
-	local response = c:getinfo_response_code()
-	local connect = c:getinfo_connect_time()
-	local total = c:getinfo_total_time()
+		:setopt_timeout(2)
+		:setopt_connecttimeout(2)
+
+	local ok, err = pcall(function() c:perform() end)
+	if ok then
+		response = c:getinfo_response_code()
+		if response == 200 then
+			connect = c:getinfo_connect_time()
+			total = c:getinfo_total_time()
+		end
+	end
 	c:close()
-	return response, connect, total
+	return ok, err, response, connect, total
 end
 
 print("------")
-print(M.getServerList("/tmpserverlist.txt"))
-print(M.readFile("/tmp/serverlist.txt"))
-print("------")
+-- print(M.getServerList("/tmpserverlist.txt"))
+-- print(M.readFile("/tmp/serverlist.txt"))
 -- print(M.pingIp('speedtest.litnet.lt:8080'))
-print(M.speedTest())
-print(M.speedTestCurl())
+-- print(M.speedTest())
+-- print(M.speedTestCurl())
 
 return M
