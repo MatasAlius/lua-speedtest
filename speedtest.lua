@@ -29,25 +29,55 @@ function M.getLocation(params)
 	return results
 end
 
+-- checks if file exists
+function M.fileExists(path)
+	local f = io.open(path,"r")
+	if f ~= nil then 
+		io.close(f)
+		return 1
+	else
+		return 0
+	end
+end
+
 -- get list of speed test servers
 function M.getServerList(file)
 
 	f = io.open(file, "w")
-	-- speed test server list
-	list_url = "https://gist.githubusercontent.com/autos/6f11ffa74a414fa58d4587a77d1f7ea7/raw/63bcfe0889798653d679be6fc17efc3f60dc4714/speedtest.php"
+
+	local exists = M.fileExists('/tmp/serverlist.txt')
+	local response = 404
 	
-	c = cURL.easy{
-		url            = list_url,
-		ssl_verifypeer = false,
-		ssl_verifyhost = false,
-		writefunction  = function(str)
-			f:write(str)
-		end
-	}
-	c:perform()
-	f:close()
-	local results = c:getinfo_response_code()
-	return results
+	if exists == 0 then
+		headers = {
+			"Accept: application/xml",
+			"Accept-Language: en",
+			"Accept-Charset: iso-8859-1,*,utf-8",
+			"Cache-Control: no-cache"
+		}
+
+		f = io.open("/tmp/serverlist_orig.txt", "w")
+		local results
+
+		c = cURL.easy{
+			-- speed test server list
+			url = "https://gist.githubusercontent.com/autos/6f11ffa74a414fa58d4587a77d1f7ea7/raw/63bcfe0889798653d679be6fc17efc3f60dc4714/speedtest.php",
+			ssl_verifypeer = false,
+			ssl_verifyhost = false,
+			httpheader     = headers,
+			writefunction  = function(str)
+				results = str
+				f:write(str)
+			end
+		}
+		c:perform()
+		f:close()
+		response = c:getinfo_response_code()
+		os.execute('sed "1,2d" /tmp/serverlist_orig.txt | head -n-2 > /tmp/serverlist.txt')
+	else
+		response = 202
+	end
+	return response
 end
 
 -- read specific file,
@@ -71,10 +101,37 @@ function M.pingIp(ip)
 	return response
 end
 
+-- speed test using bash
+-- prints time_connect, time_starttransfer, time_total
+function M.speedTest(params)
+	os.execute('head -c 1024 /dev/urandom > temp.txt')
+	os.execute('curl -X POST -d @temp.txt http://speedtest.litnet.lt/speedtest/upload.php -w "\n%{time_connect},%{time_starttransfer},%{time_total}\n"')
+end
+
+-- speed test using curl
+-- returns response_code, connect_time, total_time
+function M.speedTestCurl(params)
+	os.execute('head -c 1024 /dev/urandom > temp.txt')
+	local post = cURL.form()
+  	:add_file  ("name", "temp.txt", "text/plain")
+
+	local c = cURL.easy()
+		:setopt_url("http://speedtest.litnet.lt/speedtest/upload.php")
+		:setopt_httppost(post)
+		:perform()
+	local response = c:getinfo_response_code()
+	local connect = c:getinfo_connect_time()
+	local total = c:getinfo_total_time()
+	c:close()
+	return response, connect, total
+end
+
 print("------")
-print(M.getServerList("serverlist.txt"))
+print(M.getServerList("/tmpserverlist.txt"))
 print(M.readFile("/tmp/serverlist.txt"))
 print("------")
-print(M.pingIp('speed-klaipeda.telia.lt:8080'))
+-- print(M.pingIp('speedtest.litnet.lt:8080'))
+print(M.speedTest())
+print(M.speedTestCurl())
 
 return M
