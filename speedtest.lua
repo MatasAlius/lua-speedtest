@@ -104,14 +104,14 @@ end
 -- speed test using bash
 -- prints time_connect, time_starttransfer, time_total
 function M.speedTest(params)
-	os.execute('head -c 1024 /dev/urandom > temp.txt')
+	os.execute('head -c '..params..' /dev/urandom > temp.txt')
 	os.execute('curl -X POST -d @temp.txt http://speedtest.litnet.lt/speedtest/upload.php -w "\n%{time_connect},%{time_starttransfer},%{time_total}\n"')
 end
 
 -- speed test using curl
--- returns response_code, connect_time, total_time
+-- returns response_code, connect_time, total_time, upload_speed
 function M.speedTestCurl(params)
-	os.execute('head -c 1024 /dev/urandom > temp.txt')
+	os.execute('head -c '..params..' /dev/urandom > temp.txt')
 	local post = cURL.form()
   	:add_file  ("name", "temp.txt", "text/plain")
 
@@ -130,6 +130,7 @@ function M.speedTestCurl(params)
 		if response == 200 then
 			connect = c:getinfo_connect_time()
 			total = c:getinfo_total_time()
+			upload = c:getinfo_speed_upload()
 		end
 	end
 	c:close()
@@ -140,7 +141,7 @@ print("------")
 -- print(M.getServerList("/tmpserverlist.txt"))
 -- print(M.readFile("/tmp/serverlist.txt"))
 -- print(M.pingIp('speedtest.litnet.lt:8080'))
--- print(M.speedTest())
--- print(M.speedTestCurl())
+-- print(M.speedTest(1024))
+print(M.speedTestCurl(1024))
 
 return M
