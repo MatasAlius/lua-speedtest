@@ -137,11 +137,77 @@ function M.speedTestCurl(params)
 	return ok, err, response, connect, total
 end
 
+-- speed test using curl
+-- writes data to file temp.txt
+function M.speedTestCurl2(params)
+	os.execute('head -c '..params..' /dev/urandom > temp.txt')
+	local post = cURL.form()
+  	:add_file  ("name", "temp.txt", "text/plain")
+	local url = 'http://speedtest.litnet.lt/speedtest/upload.php'
+	print(url)
+
+	local results
+	local progress = 0
+	local start_time = os.time()
+	local end_time = os.time()
+	
+	local c = cURL.easy()
+		:setopt_url(url)
+		:setopt_httppost(post)
+		:setopt_timeout(4)
+		:setopt_connecttimeout(2)
+		:setopt_accepttimeout_ms(2)
+    :setopt_noprogress(false)
+		:setopt_progressfunction(function(dltotal, dlnow, ultotal, ulnow)
+			end_time = os.time()
+			local elapsed_time = os.difftime(end_time, start_time)
+			start_time = end_time
+			progress = progress + 1
+			print(start_time)
+			print(elapsed_time, progress, dltotal, dlnow, ultotal, ulnow)
+			-- dltotal, downloaded file size in bytes
+			-- dlnow, number of bytes downloaded so far
+			-- ultotal, uploaded file size in byte
+			-- ulnow, number of bytes uploaded so far
+			f = io.open("speedtest.txt", "w")
+			f:write(elapsed_time, progress, ',', dltotal, ',', dlnow, ',', ultotal, ',', ulnow, '\n')
+			f:close()
+			return 1
+		end)
+
+	local ok, err = pcall(function() c:perform() end)
+	print('---')
+	print(ok)
+	print(err)
+	print('---')
+	if ok then
+		if c:getinfo_response_code() == 200 then
+			print('\ntest:')
+			print(c:getinfo_total_time())
+			print(c:getinfo_size_upload())
+			print(c:getinfo_speed_upload())
+			print(c:getinfo_size_download())
+			print(c:getinfo_speed_download())
+			print(c:getinfo(cURL.INFO_RESPONSE_CODE))
+			print(c:getinfo(cURL.INFO_SIZE_UPLOAD_T))
+			print(c:getinfo(cURL.INFO_SPEED_UPLOAD_T))
+			print(c:getinfo(cURL.INFO_CONTENT_LENGTH_UPLOAD_T))
+
+			print('---')
+		else
+			ok = false
+		end
+	end
+	c:close()
+	print('---')
+	return ok, err
+end
+
 print("------")
 -- print(M.getServerList("/tmpserverlist.txt"))
 -- print(M.readFile("/tmp/serverlist.txt"))
 -- print(M.pingIp('speedtest.litnet.lt:8080'))
 -- print(M.speedTest(1024))
-print(M.speedTestCurl(1024))
+print(M.speedTestCurl2(10485760))
 
 return M
