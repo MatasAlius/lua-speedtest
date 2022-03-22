@@ -137,40 +137,31 @@ function M.speedTestCurl(params)
 	return ok, err, response, connect, total
 end
 
--- speed test using curl
+-- speed test upload using curl
 -- writes data to file temp.txt
-function M.speedTestCurl2(params)
-	os.execute('head -c '..params..' /dev/urandom > temp.txt')
+function M.speedTestUpload(size, url)
+	os.execute('head -c '..size..' /dev/urandom > /tmp/temp.txt')
+
 	local post = cURL.form()
-  	:add_file  ("name", "temp.txt", "text/plain")
-	local url = 'http://speedtest.litnet.lt/speedtest/upload.php'
-	print(url)
+		:add_file  ("name", "/tmp/temp.txt", "text/plain")
 
 	local results
-	local progress = 0
-	local start_time = os.time()
-	local end_time = os.time()
-	
+	local start_time = os.clock()
+	local end_time = os.clock()
+
 	local c = cURL.easy()
 		:setopt_url(url)
 		:setopt_httppost(post)
-		:setopt_timeout(4)
+		:setopt_timeout(6)
 		:setopt_connecttimeout(2)
 		:setopt_accepttimeout_ms(2)
-    :setopt_noprogress(false)
+		:setopt_noprogress(false)
 		:setopt_progressfunction(function(dltotal, dlnow, ultotal, ulnow)
-			end_time = os.time()
-			local elapsed_time = os.difftime(end_time, start_time)
+			end_time = os.clock()
+			local elapsed_time = end_time - start_time
 			start_time = end_time
-			progress = progress + 1
-			print(start_time)
-			print(elapsed_time, progress, dltotal, dlnow, ultotal, ulnow)
-			-- dltotal, downloaded file size in bytes
-			-- dlnow, number of bytes downloaded so far
-			-- ultotal, uploaded file size in byte
-			-- ulnow, number of bytes uploaded so far
-			f = io.open("speedtest.txt", "w")
-			f:write(elapsed_time, progress, ',', dltotal, ',', dlnow, ',', ultotal, ',', ulnow, '\n')
+			f = io.open("/tmp/speedtest.txt", "w")
+			f:write(elapsed_time, ',', dltotal, ',', dlnow, ',', ultotal, ',', ulnow, '\n')
 			f:close()
 			return 1
 		end)
@@ -208,6 +199,6 @@ print("------")
 -- print(M.readFile("/tmp/serverlist.txt"))
 -- print(M.pingIp('speedtest.litnet.lt:8080'))
 -- print(M.speedTest(1024))
-print(M.speedTestCurl2(10485760))
+print(M.speedTestUpload(10485760,'http://speedtest.litnet.lt/speedtest/upload.php'))
 
 return M
