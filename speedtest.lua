@@ -138,14 +138,15 @@ function M.speedTestCurl(params)
 end
 
 -- speed test upload using curl
--- writes data to file temp.txt
+-- writes data to file speedtest_up.txt
 function M.speedTestUpload(size, url)
+	os.execute('rm /tmp/speedtest_up.txt &')
+
 	os.execute('head -c '..size..' /dev/urandom > /tmp/temp.txt')
 
 	local post = cURL.form()
 		:add_file  ("name", "/tmp/temp.txt", "text/plain")
 
-	local results
 	local start_time = os.clock()
 	local end_time = os.clock()
 
@@ -159,9 +160,9 @@ function M.speedTestUpload(size, url)
 		:setopt_progressfunction(function(dltotal, dlnow, ultotal, ulnow)
 			end_time = os.clock()
 			local elapsed_time = end_time - start_time
-			start_time = end_time
-			f = io.open("/tmp/speedtest.txt", "w")
-			f:write(elapsed_time, ',', dltotal, ',', dlnow, ',', ultotal, ',', ulnow, '\n')
+			f = io.open("/tmp/speedtest_up.txt", "w")
+			local up_speed = ulnow / 1000000 / elapsed_time
+			f:write(elapsed_time, ',', ultotal, ',', ulnow, ',', up_speed, '\n')
 			f:close()
 			return 1
 		end)
@@ -173,24 +174,58 @@ function M.speedTestUpload(size, url)
 	print('---')
 	if ok then
 		if c:getinfo_response_code() == 200 then
-			print('\ntest:')
 			print(c:getinfo_total_time())
 			print(c:getinfo_size_upload())
 			print(c:getinfo_speed_upload())
-			print(c:getinfo_size_download())
-			print(c:getinfo_speed_download())
-			print(c:getinfo(cURL.INFO_RESPONSE_CODE))
-			print(c:getinfo(cURL.INFO_SIZE_UPLOAD_T))
-			print(c:getinfo(cURL.INFO_SPEED_UPLOAD_T))
-			print(c:getinfo(cURL.INFO_CONTENT_LENGTH_UPLOAD_T))
-
 			print('---')
 		else
 			ok = false
 		end
 	end
 	c:close()
+	return ok, err
+end
+
+-- speed test download using curl
+-- writes data to file speedtest_down.txt
+function M.speedTestDownload(url)
+	os.execute('rm /tmp/speedtest_down.txt &')
+
+	local start_time = os.clock()
+	local end_time = os.clock()
+
+	local c = cURL.easy()
+		:setopt_url(url)
+		:setopt_timeout(6)
+		:setopt_connecttimeout(2)
+		:setopt_accepttimeout_ms(2)
+		:setopt_noprogress(false)
+		:setopt_progressfunction(function(dltotal, dlnow, ultotal, ulnow)
+			end_time = os.clock()
+			local elapsed_time = end_time - start_time
+			f = io.open("/tmp/speedtest_down.txt", "w")
+			local down_speed = dlnow / 1000000 / elapsed_time
+			f:write(elapsed_time, ',', dltotal, ',', dlnow, ',', down_speed, '\n')
+			f:close()
+			return 1
+		end)
+
+	local ok, err = pcall(function() c:perform() end)
 	print('---')
+	print(ok)
+	print(err)
+	print('---')
+	if ok then
+		if c:getinfo_response_code() == 200 then
+			print(c:getinfo_total_time())
+			print(c:getinfo_size_download())
+			print(c:getinfo_speed_download())
+			print('---')
+		else
+			ok = false
+		end
+	end
+	c:close()
 	return ok, err
 end
 
@@ -199,6 +234,7 @@ print("------")
 -- print(M.readFile("/tmp/serverlist.txt"))
 -- print(M.pingIp('speedtest.litnet.lt:8080'))
 -- print(M.speedTest(1024))
-print(M.speedTestUpload(10485760,'http://speedtest.litnet.lt/speedtest/upload.php'))
+-- print(M.speedTestUpload(10485760,'http://speedtest.litnet.lt/speedtest/upload.php'))
+print(M.speedTestDownload('http://speedtest.litnet.lt:8080/download'))
 
 return M
