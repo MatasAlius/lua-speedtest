@@ -147,23 +147,27 @@ function M.speedTestUpload(size, url)
 	local post = cURL.form()
 		:add_file  ("name", "/tmp/temp.txt", "text/plain")
 
+	f = io.open("/tmp/speedtest_up.txt", "w")
+	f:write('0,0,0,0,0\n')
+	f:flush()
+
 	local start_time = os.clock()
 	local end_time = os.clock()
 
 	local c = cURL.easy()
 		:setopt_url(url)
 		:setopt_httppost(post)
-		:setopt_timeout(6)
+		:setopt_timeout(8)
 		:setopt_connecttimeout(2)
 		:setopt_accepttimeout_ms(2)
 		:setopt_noprogress(false)
 		:setopt_progressfunction(function(dltotal, dlnow, ultotal, ulnow)
 			end_time = os.clock()
 			local elapsed_time = end_time - start_time
-			f = io.open("/tmp/speedtest_up.txt", "w")
 			local up_speed = ulnow / 1000000 / elapsed_time
-			f:write(elapsed_time, ',', ultotal, ',', ulnow, ',', up_speed, '\n')
-			f:close()
+			f:seek("set") 
+			f:write(elapsed_time, ',', ultotal, ',', ulnow, ',', up_speed, ',0', '\n')
+			f:flush()
 			return 1
 		end)
 
@@ -171,7 +175,6 @@ function M.speedTestUpload(size, url)
 	print('---')
 	print(ok)
 	print(err)
-	print('---')
 	if ok then
 		if c:getinfo_response_code() == 200 then
 			print(c:getinfo_total_time())
@@ -182,7 +185,10 @@ function M.speedTestUpload(size, url)
 			ok = false
 		end
 	end
-	c:close()
+	f:seek("set") 
+	f:write('-1,-1,-1,-1,1\n')
+	f:flush()
+	f:close()
 	return ok, err
 end
 
@@ -191,22 +197,27 @@ end
 function M.speedTestDownload(url)
 	os.execute('rm /tmp/speedtest_down.txt &')
 
+	f = io.open("/tmp/speedtest_down.txt", "w")
+	f:write('0,0,0,0,0\n')
+	f:flush()
+
 	local start_time = os.clock()
 	local end_time = os.clock()
 
 	local c = cURL.easy()
 		:setopt_url(url)
-		:setopt_timeout(6)
+		:setopt_useragent('Mozilla/4.0 (compatible; MSIE 5.01; Windows NT 5.0)')
+		:setopt_timeout(8)
 		:setopt_connecttimeout(2)
 		:setopt_accepttimeout_ms(2)
 		:setopt_noprogress(false)
 		:setopt_progressfunction(function(dltotal, dlnow, ultotal, ulnow)
 			end_time = os.clock()
 			local elapsed_time = end_time - start_time
-			f = io.open("/tmp/speedtest_down.txt", "w")
 			local down_speed = dlnow / 1000000 / elapsed_time
-			f:write(elapsed_time, ',', dltotal, ',', dlnow, ',', down_speed, '\n')
-			f:close()
+			f:seek("set") 
+			f:write(elapsed_time, ',', dltotal, ',', dlnow, ',', down_speed, ',0', '\n')
+			f:flush()
 			return 1
 		end)
 
@@ -225,7 +236,10 @@ function M.speedTestDownload(url)
 			ok = false
 		end
 	end
-	c:close()
+	f:seek("set") 
+	f:write('-1,-1,-1,-1,1\n')
+	f:flush()
+	f:close()
 	return ok, err
 end
 
